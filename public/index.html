@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="de" data-theme="dark" data-style="aurora" data-density="comfortable">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DMS Panel – Backup &amp; Webmail</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📬</text></svg>" />
+  <link rel="stylesheet" href="css/app.css" />
+</head>
+<body>
+  <div class="aurora-bg" aria-hidden="true"><span></span><span></span><span></span></div>
+
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-icon">📬</div>
+      <div class="brand-text">
+        <strong>DMS Panel</strong>
+        <small id="brand-version"></small>
+      </div>
+    </div>
+    <nav class="app-tabs" role="tablist">
+      <button class="app-tab active" data-view="backup" role="tab">🛡️ Backup</button>
+      <button class="app-tab" data-view="webmail" role="tab">✉️ Webmail</button>
+    </nav>
+    <div class="topbar-actions">
+      <button class="icon-btn" id="btn-settings" title="Darstellung anpassen">🎨</button>
+    </div>
+  </header>
+
+  <!-- ======================= BACKUP-ANSICHT ======================= -->
+  <main id="view-backup" class="view active">
+
+    <section id="backup-login" class="login-card hidden">
+      <div class="card login-inner">
+        <h2>🛡️ Admin-Anmeldung</h2>
+        <p class="muted">Zugang zur Backup-Verwaltung</p>
+        <form id="backup-login-form">
+          <label>Admin-Passwort
+            <input type="password" id="admin-password" autocomplete="current-password" required />
+          </label>
+          <p class="error hidden" id="backup-login-error"></p>
+          <button type="submit" class="btn primary full">Anmelden</button>
+        </form>
+      </div>
+    </section>
+
+    <section id="backup-app" class="hidden">
+      <div class="grid stats-grid">
+        <div class="card stat-card">
+          <div class="stat-icon">🗄️</div>
+          <div><small>Letztes Backup</small><strong id="stat-last">–</strong></div>
+        </div>
+        <div class="card stat-card">
+          <div class="stat-icon">📦</div>
+          <div><small>Backups gesamt</small><strong id="stat-count">–</strong></div>
+        </div>
+        <div class="card stat-card">
+          <div class="stat-icon">⏰</div>
+          <div><small>Zeitplan</small><strong id="stat-schedule">–</strong></div>
+        </div>
+        <div class="card stat-card">
+          <div class="stat-icon">🐳</div>
+          <div><small>DMS-Container</small><strong id="stat-container">–</strong></div>
+        </div>
+      </div>
+
+      <div class="grid main-grid">
+        <div class="card">
+          <div class="card-head">
+            <h3>📦 Backups</h3>
+            <div class="row gap">
+              <button class="btn ghost" id="btn-upload">⬆️ Hochladen</button>
+              <input type="file" id="upload-file" accept=".gz" class="hidden" />
+              <button class="btn primary" id="btn-backup-now">➕ Backup jetzt</button>
+            </div>
+          </div>
+          <div id="backup-list" class="backup-list">
+            <p class="muted empty">Lade Backups …</p>
+          </div>
+        </div>
+
+        <div class="stack">
+          <div class="card">
+            <h3>🗂️ Quellen</h3>
+            <div id="source-list" class="source-list"></div>
+          </div>
+
+          <div class="card">
+            <h3>⏰ Automatische Backups</h3>
+            <form id="schedule-form" class="stack">
+              <label class="switch-row">
+                <span>Aktiviert</span>
+                <input type="checkbox" id="schedule-enabled" class="switch" />
+              </label>
+              <label>Cron-Ausdruck
+                <input type="text" id="schedule-cron" placeholder="0 3 * * *" />
+              </label>
+              <label>Aufbewahrung (Anzahl Backups, 0 = unbegrenzt)
+                <input type="number" id="schedule-retention" min="0" max="999" />
+              </label>
+              <button type="submit" class="btn primary full">Speichern</button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- ======================= WEBMAIL-ANSICHT ======================= -->
+  <main id="view-webmail" class="view">
+
+    <section id="mail-login" class="login-card">
+      <div class="card login-inner">
+        <h2>✉️ Webmail</h2>
+        <p class="muted" id="mail-login-host"></p>
+        <form id="mail-login-form">
+          <label>E-Mail-Adresse
+            <input type="email" id="mail-user" autocomplete="username" required />
+          </label>
+          <label>Passwort
+            <input type="password" id="mail-pass" autocomplete="current-password" required />
+          </label>
+          <p class="error hidden" id="mail-login-error"></p>
+          <button type="submit" class="btn primary full">Anmelden</button>
+        </form>
+      </div>
+    </section>
+
+    <section id="mail-app" class="mail-layout hidden">
+      <aside class="mail-folders">
+        <button class="btn primary full" id="btn-compose">✏️ Neue E-Mail</button>
+        <nav id="folder-list" class="folder-list"></nav>
+        <div class="mail-user-box">
+          <span id="mail-user-label" class="muted"></span>
+          <button class="icon-btn" id="btn-mail-logout" title="Abmelden">🚪</button>
+        </div>
+      </aside>
+
+      <section class="mail-list-pane">
+        <div class="mail-list-head">
+          <input type="search" id="mail-search" placeholder="🔍 Suchen …" />
+          <button class="icon-btn" id="btn-mail-refresh" title="Aktualisieren">🔄</button>
+        </div>
+        <div id="message-list" class="message-list"></div>
+        <div class="mail-pager">
+          <button class="icon-btn" id="pager-prev">◀</button>
+          <span id="pager-info" class="muted"></span>
+          <button class="icon-btn" id="pager-next">▶</button>
+        </div>
+      </section>
+
+      <section class="mail-read-pane" id="read-pane">
+        <div class="read-placeholder muted" id="read-placeholder">
+          <div class="placeholder-icon">📭</div>
+          <p>Wähle eine Nachricht aus</p>
+        </div>
+        <article id="message-view" class="hidden">
+          <div class="message-toolbar">
+            <button class="btn ghost" id="btn-reply">↩️ Antworten</button>
+            <button class="btn ghost" id="btn-forward">↪️ Weiterleiten</button>
+            <button class="btn ghost danger" id="btn-delete-mail">🗑️ Löschen</button>
+            <button class="icon-btn" id="btn-close-mail" title="Schließen">✕</button>
+          </div>
+          <h2 id="msg-subject"></h2>
+          <div class="msg-meta">
+            <div class="avatar" id="msg-avatar"></div>
+            <div>
+              <div id="msg-from"></div>
+              <div class="muted small" id="msg-to"></div>
+              <div class="muted small" id="msg-date"></div>
+            </div>
+          </div>
+          <div id="msg-attachments" class="attachments hidden"></div>
+          <iframe id="msg-frame" class="msg-frame" sandbox="allow-popups allow-popups-to-escape-sandbox" title="Nachricht"></iframe>
+        </article>
+      </section>
+    </section>
+  </main>
+
+  <!-- ======================= COMPOSE-MODAL ======================= -->
+  <div class="modal-backdrop hidden" id="compose-modal">
+    <div class="modal card">
+      <div class="card-head">
+        <h3 id="compose-title">✏️ Neue E-Mail</h3>
+        <button class="icon-btn" id="btn-compose-close">✕</button>
+      </div>
+      <form id="compose-form" class="stack">
+        <label>An <input type="text" id="compose-to" required placeholder="empfaenger@example.com" /></label>
+        <label>CC <input type="text" id="compose-cc" /></label>
+        <label>Betreff <input type="text" id="compose-subject" /></label>
+        <label>Nachricht <textarea id="compose-text" rows="10"></textarea></label>
+        <p class="error hidden" id="compose-error"></p>
+        <div class="row gap end">
+          <button type="button" class="btn ghost" id="btn-compose-cancel">Abbrechen</button>
+          <button type="submit" class="btn primary">📤 Senden</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ======================= JOB-MODAL ======================= -->
+  <div class="modal-backdrop hidden" id="job-modal">
+    <div class="modal card">
+      <div class="card-head">
+        <h3 id="job-title">⏳ Vorgang läuft …</h3>
+        <button class="icon-btn hidden" id="btn-job-close">✕</button>
+      </div>
+      <div class="job-spinner" id="job-spinner"><div class="spinner"></div></div>
+      <pre id="job-log" class="job-log"></pre>
+    </div>
+  </div>
+
+  <!-- ======================= RESTORE-MODAL ======================= -->
+  <div class="modal-backdrop hidden" id="restore-modal">
+    <div class="modal card">
+      <div class="card-head">
+        <h3>♻️ Backup wiederherstellen</h3>
+        <button class="icon-btn" id="btn-restore-close">✕</button>
+      </div>
+      <p>Backup <strong id="restore-name"></strong> wird wiederhergestellt. Bestehende Daten werden überschrieben!</p>
+      <label class="switch-row" id="restore-stop-row">
+        <span>DMS-Container während Restore stoppen <small class="muted">(empfohlen)</small></span>
+        <input type="checkbox" id="restore-stop" class="switch" checked />
+      </label>
+      <div class="row gap end">
+        <button class="btn ghost" id="btn-restore-cancel">Abbrechen</button>
+        <button class="btn danger" id="btn-restore-confirm">♻️ Wiederherstellen</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================= THEME-PANEL ======================= -->
+  <div class="settings-drawer hidden" id="settings-drawer">
+    <div class="card-head">
+      <h3>🎨 Darstellung</h3>
+      <button class="icon-btn" id="btn-settings-close">✕</button>
+    </div>
+
+    <h4>Modus</h4>
+    <div class="seg" id="seg-theme">
+      <button data-value="light">☀️ Hell</button>
+      <button data-value="dark">🌙 Dunkel</button>
+      <button data-value="auto">🖥️ Auto</button>
+    </div>
+
+    <h4>Akzentfarbe</h4>
+    <div class="swatches" id="swatches"></div>
+    <label class="custom-color">Eigene Farbe
+      <input type="color" id="custom-accent" value="#6366f1" />
+    </label>
+
+    <h4>Design</h4>
+    <div class="seg vertical" id="seg-style">
+      <button data-value="aurora">✨ Aurora <small>Glas &amp; Verlauf</small></button>
+      <button data-value="flat">▪️ Flat <small>Klar &amp; minimal</small></button>
+      <button data-value="soft">🫧 Soft <small>Rund &amp; weich</small></button>
+    </div>
+
+    <h4>Dichte</h4>
+    <div class="seg" id="seg-density">
+      <button data-value="comfortable">Komfortabel</button>
+      <button data-value="compact">Kompakt</button>
+    </div>
+
+    <button class="btn ghost full" id="btn-theme-reset">Zurücksetzen</button>
+  </div>
+
+  <div id="toasts" class="toasts"></div>
+
+  <script src="js/theme.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/backup.js"></script>
+  <script src="js/webmail.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>

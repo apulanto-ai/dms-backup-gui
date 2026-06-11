@@ -1,0 +1,147 @@
+# 📬 DMS Backup GUI
+
+**Aktuelle Version: v1.0.0** (siehe [Changelog](#-changelog))
+
+Eine moderne Web-Oberfläche für [docker-mailserver (DMS)](https://github.com/docker-mailserver/docker-mailserver) – speziell für Setups ohne GUI (z. B. unter **Unraid**). Ein einziger Container liefert zwei Oberflächen:
+
+- 🛡️ **Backup & Restore** – DMS-Daten sichern, wiederherstellen, herunterladen, hochladen und automatisch nach Zeitplan sichern
+- ✉️ **Webmail** – vollwertiger Mail-Client direkt im Browser (IMAP/SMTP gegen den DMS)
+
+Beide Oberflächen teilen sich ein anpassbares, modernes Design: **Dark Mode / Light Mode / Auto**, freie **Akzentfarbe** (8 Vorgaben + eigener Farbwähler), drei **Design-Stile** (✨ Aurora mit Glas-Effekt, ▪️ Flat, 🫧 Soft) und einstellbare **Dichte**.
+
+---
+
+## ✨ Funktionen
+
+### Backup & Restore
+- Backup aller DMS-Verzeichnisse (Mail-Daten, Mail-State, Konfiguration, Logs) als `tar.gz`
+- Wiederherstellung per Klick – optional wird der DMS-Container währenddessen automatisch **gestoppt und neu gestartet** (über den Docker-Socket)
+- **Zeitgesteuerte Backups** per Cron-Ausdruck, inkl. Aufbewahrungsregel (behalte die letzten *N* Backups)
+- Backups **herunterladen** (Offsite-Kopie) und **hochladen** (Restore auf neuem System)
+- Live-Protokoll laufender Backup-/Restore-Jobs
+- Dashboard: letzte Sicherung, Gesamtgröße, Container-Status, Quellen-Übersicht
+- Geschützt per Admin-Passwort
+
+### Webmail
+- Anmeldung mit beliebigem DMS-Postfach (IMAP)
+- Ordnerliste mit Ungelesen-Zählern, Nachrichtenliste mit Suche und Paginierung
+- HTML-Mails (sandboxed & sanitized) und Text-Mails, Anhänge herunterladen
+- Verfassen, Antworten, Weiterleiten, Löschen (in Papierkorb), gesendete Mails landen im „Gesendet“-Ordner
+- Responsive – auch am Handy nutzbar
+
+---
+
+## 🚀 Installation
+
+### Unraid
+
+1. **Docker-Tab → Add Container** (oder per Compose-Plugin, siehe unten)
+2. Repository: `ghcr.io/apulanto-ai/dms-backup-gui:latest` *(alternativ selbst bauen, siehe unten)*
+3. Port `8080` mappen, z. B. auf `8080`
+4. Pfade mappen (Container-Pfad → Host-Pfad, an dein DMS-Setup anpassen):
+
+   | Container-Pfad | Host-Pfad (Beispiel Unraid) | Zweck |
+   |---|---|---|
+   | `/backups` | `/mnt/user/backups/dms` | Backup-Ablage |
+   | `/dms/mail-data` | `/mnt/user/appdata/dms/mail-data` | Mails |
+   | `/dms/mail-state` | `/mnt/user/appdata/dms/mail-state` | Zustand (Postfix-Queue, Fail2ban …) |
+   | `/dms/mail-logs` | `/mnt/user/appdata/dms/mail-logs` | Logs (optional) |
+   | `/dms/config` | `/mnt/user/appdata/dms/config` | DMS-Konfiguration |
+   | `/var/run/docker.sock` | `/var/run/docker.sock` | optional, für Container-Stopp beim Restore |
+
+5. Variablen setzen (siehe Tabelle unten), mindestens `ADMIN_PASSWORD`, `IMAP_HOST` und `DMS_CONTAINER`
+6. Starten und `http://<unraid-ip>:8080` öffnen 🎉
+
+### Docker Compose
+
+Siehe [docker-compose.yml](docker-compose.yml) im Repository – Pfade anpassen, dann:
+
+```bash
+docker compose up -d
+```
+
+### Selbst bauen
+
+```bash
+git clone https://github.com/apulanto-ai/dms-backup-gui.git
+cd dms-backup-gui
+docker build -t dms-backup-gui .
+```
+
+---
+
+## ⚙️ Umgebungsvariablen
+
+| Variable | Standard | Beschreibung |
+|---|---|---|
+| `ADMIN_PASSWORD` | `admin` ⚠️ | Passwort für die Backup-Verwaltung – **unbedingt ändern!** |
+| `DMS_CONTAINER` | – | Name des DMS-Containers (z. B. `mailserver`); aktiviert Stopp/Start beim Restore |
+| `DOCKER_SOCKET` | `/var/run/docker.sock` | Pfad zum Docker-Socket |
+| `IMAP_HOST` | – | IMAP-Server für Webmail (Hostname/IP des DMS) – ohne diese Variable ist Webmail deaktiviert |
+| `IMAP_PORT` | `993` | IMAP-Port |
+| `IMAP_SECURE` | `true` | `true` = TLS (993), `false` = STARTTLS/Plain (143) |
+| `SMTP_HOST` | = `IMAP_HOST` | SMTP-Server für den Versand |
+| `SMTP_PORT` | `465` | SMTP-Port |
+| `SMTP_SECURE` | `true` | `true` = TLS (465) |
+| `TLS_REJECT_UNAUTHORIZED` | `true` | Auf `false` setzen bei selbstsignierten Zertifikaten |
+| `BACKUP_DIR` | `/backups` | Ablageort der Backups im Container |
+| `SOURCES` | siehe unten | Backup-Quellen als `name:pfad,name:pfad` |
+| `BACKUP_CRON` | `0 3 * * *` | Standard-Cron für automatische Backups (per GUI änderbar) |
+| `RETENTION` | `14` | Standard-Aufbewahrung (Anzahl Backups, per GUI änderbar) |
+| `PORT` | `8080` | HTTP-Port der Oberfläche |
+
+Standard-`SOURCES`:
+```
+mail-data:/dms/mail-data,mail-state:/dms/mail-state,config:/dms/config,mail-logs:/dms/mail-logs
+```
+Nicht gemountete Quellen werden automatisch übersprungen.
+
+---
+
+## 🎨 Darstellung anpassen
+
+Oben rechts auf **🎨** klicken:
+
+- **Modus:** ☀️ Hell · 🌙 Dunkel · 🖥️ Auto (folgt dem System)
+- **Akzentfarbe:** 8 Farbvorgaben oder freie Farbwahl per Color-Picker
+- **Design:** ✨ Aurora (Glas & animierte Farbverläufe) · ▪️ Flat (klar & minimal) · 🫧 Soft (rund & weich)
+- **Dichte:** Komfortabel · Kompakt
+
+Die Einstellungen werden lokal im Browser gespeichert.
+
+---
+
+## 🔒 Sicherheitshinweise
+
+- Die Oberfläche ist für das **LAN/Heimnetz** gedacht. Für Zugriff von außen unbedingt einen Reverse-Proxy mit HTTPS (z. B. Nginx Proxy Manager, SWAG, Traefik) und ggf. zusätzliche Authentifizierung vorschalten.
+- `ADMIN_PASSWORD` setzen – ohne die Variable gilt das Standardpasswort `admin`.
+- Der Docker-Socket gibt dem Container weitreichende Rechte. Wer das nicht möchte, lässt den Mount weg – Restores funktionieren dann trotzdem, der DMS-Container sollte dabei aber manuell gestoppt werden.
+- Webmail-Zugangsdaten werden nur im Arbeitsspeicher des Containers gehalten (Session, 8 h), nie gespeichert.
+
+## 💡 Hinweise zu Backup & Restore
+
+- Backups sind konsistenter, wenn während des Backups wenig Mailverkehr herrscht (z. B. nachts um 3 Uhr).
+- Beim **Restore** wird der Archivinhalt über die bestehenden Daten entpackt. Empfohlen: Option „DMS-Container stoppen“ aktiviert lassen.
+- Ein Backup enthält pro Quelle ein Top-Level-Verzeichnis (`mail-data/`, `config/` …) und lässt sich daher zur Not auch manuell mit `tar -xzf` entpacken.
+
+---
+
+## 🧱 Technik
+
+- **Backend:** Node.js 22, Express, ImapFlow, Nodemailer, Mailparser, node-cron
+- **Frontend:** Vanilla JS SPA, CSS Custom Properties für das Theme-System (keine Build-Toolchain nötig)
+- **Image:** `node:22-alpine` + GNU tar, Healthcheck inklusive
+
+---
+
+## 📋 Changelog
+
+| Version | Datum | Änderungen |
+|---|---|---|
+| **v1.0.0** | 2026-06-11 | Erstveröffentlichung: Backup/Restore mit Zeitplan, Aufbewahrung, Up-/Download, Docker-Container-Steuerung; Webmail (Lesen, Suchen, Verfassen, Antworten, Weiterleiten, Anhänge); Theme-System mit Dark/Light/Auto, Akzentfarben und drei Design-Stilen |
+
+---
+
+## 📄 Lizenz
+
+[MIT](LICENSE)

@@ -1,0 +1,42 @@
+# Beispiel-Setup: DMS Backup GUI neben einem bestehenden docker-mailserver.
+# Pfade an die eigene Umgebung anpassen (Unraid: /mnt/user/appdata/...).
+services:
+  dms-backup-gui:
+    image: ghcr.io/apulanto-ai/dms-backup-gui:latest
+    # Alternativ lokal bauen:
+    # build: .
+    container_name: dms-backup-gui
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      # --- Sicherheit ---
+      ADMIN_PASSWORD: "bitte-aendern"
+
+      # --- DMS-Container-Steuerung (optional, für sicheren Restore) ---
+      DMS_CONTAINER: "mailserver"
+
+      # --- Webmail (IMAP/SMTP des DMS) ---
+      IMAP_HOST: "mailserver"        # Hostname/IP des DMS
+      IMAP_PORT: "993"
+      IMAP_SECURE: "true"
+      SMTP_HOST: "mailserver"
+      SMTP_PORT: "465"
+      SMTP_SECURE: "true"
+      # Bei selbstsignierten Zertifikaten:
+      # TLS_REJECT_UNAUTHORIZED: "false"
+
+      # --- Automatische Backups (per GUI änderbar) ---
+      BACKUP_CRON: "0 3 * * *"
+      RETENTION: "14"
+    volumes:
+      # Backup-Ziel
+      - ./backups:/backups
+      # DMS-Daten (Pfade an das eigene DMS-Setup anpassen!)
+      - ./docker-data/dms/mail-data:/dms/mail-data
+      - ./docker-data/dms/mail-state:/dms/mail-state
+      - ./docker-data/dms/mail-logs:/dms/mail-logs
+      - ./docker-data/dms/config:/dms/config
+      # Docker-Socket nur nötig, wenn der DMS-Container beim Restore
+      # automatisch gestoppt/gestartet werden soll
+      - /var/run/docker.sock:/var/run/docker.sock
