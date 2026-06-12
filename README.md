@@ -1,6 +1,6 @@
 # 📬 DMS Backup GUI
 
-**Aktuelle Version: v1.0.0** (siehe [Changelog](#-changelog))
+**Aktuelle Version: v1.1.0** (siehe [Changelog](#-changelog))
 
 Eine moderne Web-Oberfläche für [docker-mailserver (DMS)](https://github.com/docker-mailserver/docker-mailserver) – speziell für Setups ohne GUI (z. B. unter **Unraid**). Ein einziger Container liefert zwei Oberflächen:
 
@@ -15,6 +15,7 @@ Beide Oberflächen teilen sich ein anpassbares, modernes Design: **Dark Mode / L
 
 ### Backup & Restore
 - Backup aller DMS-Verzeichnisse (Mail-Daten, Mail-State, Konfiguration, Logs) als `tar.gz`
+- **Konfigurierbare Quellen per Dialog:** Welche Pfade gesichert werden, wird direkt in der GUI eingestellt (⚙️ an der Quellen-Karte) – inklusive **Ordner-Browser** zum Durchklicken. Die Einstellungen werden persistent im Backup-Volume gespeichert.
 - Wiederherstellung per Klick – optional wird der DMS-Container währenddessen automatisch **gestoppt und neu gestartet** (über den Docker-Socket)
 - **Zeitgesteuerte Backups** per Cron-Ausdruck, inkl. Aufbewahrungsregel (behalte die letzten *N* Backups)
 - Backups **herunterladen** (Offsite-Kopie) und **hochladen** (Restore auf neuem System)
@@ -37,20 +38,18 @@ Beide Oberflächen teilen sich ein anpassbares, modernes Design: **Dark Mode / L
 
 1. **Docker-Tab → Add Container** (oder per Compose-Plugin, siehe unten)
 2. Repository: `ghcr.io/apulanto-ai/dms-backup-gui:latest` *(alternativ selbst bauen, siehe unten)*
-3. Port `8080` mappen, z. B. auf `8080`
-4. Pfade mappen (Container-Pfad → Host-Pfad, an dein DMS-Setup anpassen):
+3. Netzwerk: Die GUI lauscht auf **Port 80**. Mit eigener Container-IP (Unraid-Bridge `br0`/macvlan) ist kein Port-Mapping nötig; im normalen Bridge-Modus z. B. `8080 → 80` mappen.
+4. Pfade mappen (Container-Pfad → Host-Pfad):
 
    | Container-Pfad | Host-Pfad (Beispiel Unraid) | Zweck |
    |---|---|---|
-   | `/backups` | `/mnt/user/backups/dms` | Backup-Ablage |
-   | `/dms/mail-data` | `/mnt/user/appdata/dms/mail-data` | Mails |
-   | `/dms/mail-state` | `/mnt/user/appdata/dms/mail-state` | Zustand (Postfix-Queue, Fail2ban …) |
-   | `/dms/mail-logs` | `/mnt/user/appdata/dms/mail-logs` | Logs (optional) |
-   | `/dms/config` | `/mnt/user/appdata/dms/config` | DMS-Konfiguration |
+   | `/backups` | `/mnt/user/backups/dms` | Backup-Ablage (enthält auch die GUI-Einstellungen) |
+   | `/dms` | `/mnt/user/appdata/dms` | DMS-Daten (ein Mount genügt) |
    | `/var/run/docker.sock` | `/var/run/docker.sock` | optional, für Container-Stopp beim Restore |
 
 5. Variablen setzen (siehe Tabelle unten), mindestens `ADMIN_PASSWORD`, `IMAP_HOST` und `DMS_CONTAINER`
-6. Starten und `http://<unraid-ip>:8080` öffnen 🎉
+6. Starten, `http://<container-ip>/` (bzw. `http://<unraid-ip>:8080`) öffnen 🎉
+7. Im Backup-Tab über **⚙️ Konfigurieren** prüfen/festlegen, welche Unterordner gesichert werden – der Ordner-Browser zeigt dabei direkt den Container-Inhalt unter `/dms`
 
 ### Docker Compose
 
@@ -85,16 +84,16 @@ docker build -t dms-backup-gui .
 | `SMTP_SECURE` | `true` | `true` = TLS (465) |
 | `TLS_REJECT_UNAUTHORIZED` | `true` | Auf `false` setzen bei selbstsignierten Zertifikaten |
 | `BACKUP_DIR` | `/backups` | Ablageort der Backups im Container |
-| `SOURCES` | siehe unten | Backup-Quellen als `name:pfad,name:pfad` |
+| `SOURCES` | siehe unten | *Standard*-Backup-Quellen als `name:pfad,name:pfad` – in der GUI gespeicherte Quellen (⚙️-Dialog) haben Vorrang |
 | `BACKUP_CRON` | `0 3 * * *` | Standard-Cron für automatische Backups (per GUI änderbar) |
 | `RETENTION` | `14` | Standard-Aufbewahrung (Anzahl Backups, per GUI änderbar) |
-| `PORT` | `8080` | HTTP-Port der Oberfläche |
+| `PORT` | `80` | HTTP-Port der Oberfläche |
 
 Standard-`SOURCES`:
 ```
 mail-data:/dms/mail-data,mail-state:/dms/mail-state,config:/dms/config,mail-logs:/dms/mail-logs
 ```
-Nicht gemountete Quellen werden automatisch übersprungen.
+Die Quellen lassen sich jederzeit im **⚙️-Konfigurationsdialog** der GUI ändern (mit Ordner-Browser); sie werden in `BACKUP_DIR/.settings.json` gespeichert und überleben damit Container-Updates. Nicht vorhandene Quellen werden beim Backup automatisch übersprungen.
 
 ---
 
@@ -138,6 +137,7 @@ Die Einstellungen werden lokal im Browser gespeichert.
 
 | Version | Datum | Änderungen |
 |---|---|---|
+| **v1.1.0** | 2026-06-12 | Backup-Quellen per **Konfigurationsdialog** in der GUI einstellbar (Name + Pfad, Ordner-Browser, Standardwerte, persistent in `BACKUP_DIR/.settings.json`); Standard-Port auf **80** geändert (eigene Container-IP → kein Mapping nötig); robusteres Archivformat bei frei konfigurierten Pfaden |
 | **v1.0.0** | 2026-06-11 | Erstveröffentlichung: Backup/Restore mit Zeitplan, Aufbewahrung, Up-/Download, Docker-Container-Steuerung; Webmail (Lesen, Suchen, Verfassen, Antworten, Weiterleiten, Anhänge); Theme-System mit Dark/Light/Auto, Akzentfarben und drei Design-Stilen |
 
 ---

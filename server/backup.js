@@ -9,27 +9,15 @@ const { spawn } = require('child_process');
 const cron = require('node-cron');
 
 const docker = require('./docker');
+const settings = require('./settings');
 
 const router = express.Router();
 
-const BACKUP_DIR = process.env.BACKUP_DIR || '/backups';
+const BACKUP_DIR = settings.BACKUP_DIR;
 const SCHEDULE_FILE = path.join(BACKUP_DIR, '.schedule.json');
 
-// Quellen: "name:pfad,name:pfad" – Standard entspricht den empfohlenen Mounts
-const DEFAULT_SOURCES = 'mail-data:/dms/mail-data,mail-state:/dms/mail-state,config:/dms/config,mail-logs:/dms/mail-logs';
-
 function parseSources() {
-  const raw = process.env.SOURCES || DEFAULT_SOURCES;
-  return raw
-    .split(',')
-    .map((entry) => entry.trim())
-    .filter(Boolean)
-    .map((entry) => {
-      const idx = entry.indexOf(':');
-      const name = entry.slice(0, idx);
-      const dir = entry.slice(idx + 1);
-      return { name, path: dir, exists: fs.existsSync(dir) };
-    });
+  return settings.getSources().map((src) => ({ ...src, exists: fs.existsSync(src.path) }));
 }
 
 async function dirSize(dir) {
@@ -75,17 +63,21 @@ function finishJob(job, error) {
   busy = false;
 }
 
-function runTar(args, job) {
+function runCmd(cmd, args) {
   return new Promise((resolve, reject) => {
-    const proc = spawn('tar', args);
+    const proc = spawn(cmd, args);
     let stderr = '';
     proc.stderr.on('data', (d) => (stderr += d));
     proc.on('error', reject);
     proc.on('close', (code) => {
       if (code === 0) resolve();
-      else reject(new Error(`tar beendet mit Code ${code}: ${stderr.slice(0, 500)}`));
+      else reject(new Error(`${cmd} beendet mit Code ${code}: ${stderr.slice(0, 500)}`));
     });
   });
+}
+
+function escapeRegex(str) {
+  return str.replace(/[.[\]*^$\\]/g, '\\$&');
 }
 
 // ---------------------------------------------------------------------------
@@ -100,16 +92,32 @@ async function doBackup(job, note) {
 
   const stamp = new Date().toISOString().replace(/[:T]/g, '-').slice(0, 19);
   const baseName = `dms-backup-${stamp}`;
-  const archive = path.join(BACKUP_DIR, `${baseName}.tar.gz`);
+  const tarFile = path.join(BACKUP_DIR, `${baseName}.tar`);
+  const archive = `${tarFile}.gz`;
 
-  jobLog(job, `Sichere ${sources.length} Quellen: ${sources.map((s) => s.name).join(', ')}`);
-
-  // Jede Quelle landet unter ihrem Namen als Top-Level-Verzeichnis im Archiv
-  const args = ['czf', archive];
-  for (const src of sources) {
-    args.push('--transform', `s,^${path.basename(src.path)},${src.name},`, '-C', path.dirname(src.path), path.basename(src.path));
+  // Jede Quelle landet unter ihrem Namen als Top-Level-Verzeichnis im Archiv.
+  // Eine tar-Invocation pro Quelle (cf/rf), damit sich die --transform-Ausdrücke
+  // frei konfigurierbarer Pfade nicht gegenseitig beeinflussen können.
+  try {
+    for (let i = 0; i < sources.length; i++) {
+      const src = sources[i];
+      jobLog(job, `Sichere "${src.name}" (${src.path}) ...`);
+      const base = path.posix.basename(src.path);
+      const esc = escapeRegex(base);
+      await runCmd('tar', [
+        i === 0 ? 'cf' : 'rf', tarFile,
+        '--transform', `s|^${esc}/|${src.name}/|`,
+        '--transform', `s|^${esc}$|${src.name}|`,
+        '-C', path.posix.dirname(src.path), base
+      ]);
+    }
+    jobLog(job, 'Komprimiere Archiv ...');
+    await runCmd('gzip', ['-f', tarFile]);
+  } catch (err) {
+    await fsp.rm(tarFile, { force: true });
+    await fsp.rm(archive, { force: true });
+    throw err;
   }
-  await runTar(args, job);
 
   const size = (await fsp.stat(archive)).size;
   const meta = {
@@ -168,7 +176,7 @@ async function doRestore(job, name, options) {
       }
       jobLog(job, `Stelle "${src.name}" nach ${target.path} wieder her ...`);
       // Inhalt des Archiv-Ordners <name>/ in das Zielverzeichnis entpacken
-      await runTar(['xzf', archive, '-C', target.path, '--strip-components=1', '--overwrite', src.name], job);
+      await runCmd('tar', ['xzf', archive, '-C', target.path, '--strip-components=1', '--overwrite', src.name]);
     }
     jobLog(job, 'Wiederherstellung abgeschlossen');
   } finally {
@@ -358,6 +366,48 @@ router.post('/upload', (req, res) => {
     res.json({ ok: true });
   });
   stream.on('error', (err) => res.status(500).json({ error: err.message }));
+});
+
+// ---------------------------------------------------------------------------
+// Quellen-Konfiguration + Ordner-Browser (für den Konfigurationsdialog)
+// ---------------------------------------------------------------------------
+
+router.get('/settings', (req, res) => {
+  res.json({
+    sources: settings.getSources(),
+    defaults: settings.defaultSources(),
+    custom: settings.isCustom(),
+    backupDir: BACKUP_DIR
+  });
+});
+
+router.put('/settings', async (req, res) => {
+  if (busy) return res.status(409).json({ error: 'Es läuft gerade ein Backup oder Restore' });
+  const { sources, reset } = req.body || {};
+  if (reset) {
+    await settings.resetSources();
+    return res.json({ sources: settings.getSources(), custom: false });
+  }
+  const error = settings.validateSources(sources);
+  if (error) return res.status(400).json({ error });
+  const cleaned = await settings.saveSources(sources);
+  res.json({ sources: cleaned, custom: true });
+});
+
+router.get('/browse', async (req, res) => {
+  let dir = String(req.query.path || '/');
+  if (!dir.startsWith('/')) dir = `/${dir}`;
+  dir = path.posix.normalize(dir);
+  try {
+    const entries = await fsp.readdir(dir, { withFileTypes: true });
+    const dirs = entries
+      .filter((entry) => entry.isDirectory())
+      .map((entry) => entry.name)
+      .sort((a, b) => a.localeCompare(b, 'de'));
+    res.json({ path: dir, parent: dir === '/' ? null : path.posix.dirname(dir), dirs });
+  } catch (err) {
+    res.status(400).json({ error: `Verzeichnis nicht lesbar: ${err.message}` });
+  }
 });
 
 router.put('/schedule', async (req, res) => {

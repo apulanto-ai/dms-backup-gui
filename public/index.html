@@ -81,7 +81,10 @@
 
         <div class="stack">
           <div class="card">
-            <h3>🗂️ Quellen</h3>
+            <div class="card-head">
+              <h3>🗂️ Quellen</h3>
+              <button class="btn ghost" id="btn-sources-config" title="Pfade konfigurieren">⚙️ Konfigurieren</button>
+            </div>
             <div id="source-list" class="source-list"></div>
           </div>
 
@@ -225,6 +228,48 @@
       <div class="row gap end">
         <button class="btn ghost" id="btn-restore-cancel">Abbrechen</button>
         <button class="btn danger" id="btn-restore-confirm">♻️ Wiederherstellen</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================= QUELLEN-KONFIGURATION ======================= -->
+  <div class="modal-backdrop hidden" id="sources-modal">
+    <div class="modal card">
+      <div class="card-head">
+        <h3>⚙️ Backup-Quellen konfigurieren</h3>
+        <button class="icon-btn" id="btn-sources-close">✕</button>
+      </div>
+      <p class="muted small">
+        Pfade gelten <strong>innerhalb des Containers</strong>. Mounte dein DMS-Verzeichnis
+        (z.&nbsp;B. <code>/mnt/user/appdata/dms</code>) in den Container und wähle hier die
+        Unterordner aus – jede Quelle landet unter ihrem Namen im Backup-Archiv.
+      </p>
+      <div class="source-edit-head"><span>Name</span><span>Pfad im Container</span></div>
+      <div id="sources-editor" class="sources-editor"></div>
+      <button type="button" class="btn ghost" id="btn-source-add">➕ Quelle hinzufügen</button>
+      <p class="error hidden" id="sources-error"></p>
+      <div class="row gap end">
+        <button class="btn ghost" id="btn-sources-defaults">↩️ Standardwerte</button>
+        <button class="btn primary" id="btn-sources-save">💾 Speichern</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================= ORDNER-BROWSER ======================= -->
+  <div class="modal-backdrop hidden" id="browse-modal">
+    <div class="modal card">
+      <div class="card-head">
+        <h3>📁 Ordner auswählen</h3>
+        <button class="icon-btn" id="btn-browse-close">✕</button>
+      </div>
+      <div class="browse-bar">
+        <button class="icon-btn" id="btn-browse-up" title="Übergeordneter Ordner">⬆️</button>
+        <code id="browse-path" class="browse-path">/</code>
+      </div>
+      <div id="browse-list" class="browse-list"></div>
+      <div class="row gap end">
+        <button class="btn ghost" id="btn-browse-cancel">Abbrechen</button>
+        <button class="btn primary" id="btn-browse-select">✔️ Diesen Ordner wählen</button>
       </div>
     </div>
   </div>

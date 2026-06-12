@@ -125,6 +125,8 @@ html[data-style="aurora"] .aurora-bg { opacity: 1; }
 .hidden { display: none !important; }
 .muted { color: var(--muted); }
 .small { font-size: 12px; }
+code { background: var(--surface-2); border: 1px solid var(--border); border-radius: 5px;
+  padding: 1px 5px; font-size: 0.9em; }
 .error { color: #ef4444; font-size: 13px; }
 .row { display: flex; align-items: center; }
 .row.gap { gap: 10px; }
@@ -222,6 +224,26 @@ textarea { resize: vertical; }
 .source-item .dot.missing { background: #ef4444; }
 .source-item .s-path { color: var(--muted); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .source-item .s-size { margin-left: auto; color: var(--muted); font-size: 12px; white-space: nowrap; }
+
+/* ------------------------------------------- Quellen-Editor + Ordner-Browser */
+.source-edit-head { display: grid; grid-template-columns: minmax(90px, 140px) 1fr 38px 38px; gap: 8px;
+  font-size: 12px; font-weight: 600; color: var(--muted); margin-bottom: 6px; }
+.sources-editor { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
+.source-edit-row { display: grid; grid-template-columns: minmax(90px, 140px) 1fr 38px 38px; gap: 8px; align-items: center; }
+.source-edit-row input { width: 100%; min-width: 0; }
+#btn-source-add { margin-bottom: 14px; }
+#sources-modal .row.end { margin-top: 4px; }
+
+.browse-bar { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+.browse-path { flex: 1; min-width: 0; background: var(--surface-2); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 8px 12px; font-size: 12px; overflow-wrap: anywhere; }
+.browse-list { display: flex; flex-direction: column; gap: 2px; max-height: 320px; overflow-y: auto;
+  border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 6px; margin-bottom: 14px; }
+.browse-item { display: block; width: 100%; text-align: left; background: transparent; border: none;
+  color: var(--text); font-size: 13.5px; padding: 8px 10px; border-radius: calc(var(--radius-sm) - 3px);
+  cursor: pointer; transition: background 0.15s; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.browse-item:hover { background: var(--surface-2); }
+.browse-list .empty { padding: 18px 0; margin: 0; }
 
 /* ---------------------------------------------------------------- Webmail */
 .mail-layout {

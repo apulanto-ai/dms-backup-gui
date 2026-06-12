@@ -44,7 +44,7 @@ app.use((err, req, res, next) => { // eslint-disable-line no-unused-vars
 
 backup.initSchedule();
 
-const PORT = parseInt(process.env.PORT || '8080', 10);
+const PORT = parseInt(process.env.PORT || '80', 10);
 app.listen(PORT, () => {
   console.log(`DMS Backup GUI läuft auf Port ${PORT}`);
   if (!process.env.ADMIN_PASSWORD) {

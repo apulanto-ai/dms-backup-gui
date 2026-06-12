@@ -1,6 +1,7 @@
 node_modules
 backups
 docker-data
+test
 .git
 .gitignore
 .claude

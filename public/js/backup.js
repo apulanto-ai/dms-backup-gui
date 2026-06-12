@@ -81,11 +81,138 @@
         <span class="dot ${src.exists ? 'ok' : 'missing'}"></span>
         <div style="min-width:0">
           <div>${escapeHtml(src.name)}</div>
-          <div class="s-path">${escapeHtml(src.path)}${src.exists ? '' : ' – nicht gemountet'}</div>
+          <div class="s-path">${escapeHtml(src.path)}${src.exists ? '' : ' – nicht gefunden'}</div>
         </div>
         <span class="s-size">${src.exists ? formatBytes(src.size) : '–'}</span>`;
       list.appendChild(item);
     }
+  }
+
+  // ------------------------------------------------- Quellen-Konfiguration
+
+  let editorSources = [];
+
+  function makeInput(value, placeholder, onInput) {
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.placeholder = placeholder;
+    input.value = value;
+    input.addEventListener('input', () => onInput(input.value));
+    return input;
+  }
+
+  function makeIconBtn(icon, title, onClick) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'icon-btn';
+    btn.title = title;
+    btn.textContent = icon;
+    btn.addEventListener('click', onClick);
+    return btn;
+  }
+
+  function renderSourceEditor() {
+    const wrap = $('sources-editor');
+    wrap.innerHTML = '';
+    editorSources.forEach((src, index) => {
+      const row = document.createElement('div');
+      row.className = 'source-edit-row';
+      row.appendChild(makeInput(src.name, 'name', (v) => { src.name = v; }));
+      row.appendChild(makeInput(src.path, '/pfad/im/container', (v) => { src.path = v; }));
+      row.appendChild(makeIconBtn('📁', 'Ordner auswählen', () =>
+        openBrowse(src.path, (picked) => { src.path = picked; renderSourceEditor(); })));
+      row.appendChild(makeIconBtn('🗑️', 'Quelle entfernen', () => {
+        editorSources.splice(index, 1);
+        renderSourceEditor();
+      }));
+      wrap.appendChild(row);
+    });
+  }
+
+  async function openSourcesConfig() {
+    $('sources-error').classList.add('hidden');
+    try {
+      const data = await request('/api/backup/settings');
+      editorSources = data.sources.map((s) => ({ ...s }));
+      renderSourceEditor();
+      $('sources-modal').classList.remove('hidden');
+    } catch (err) {
+      toast(err.message, 'error');
+    }
+  }
+
+  async function loadSourceDefaults() {
+    try {
+      const data = await request('/api/backup/settings');
+      editorSources = data.defaults.map((s) => ({ ...s }));
+      renderSourceEditor();
+    } catch (err) {
+      toast(err.message, 'error');
+    }
+  }
+
+  async function saveSources() {
+    const errorEl = $('sources-error');
+    errorEl.classList.add('hidden');
+    try {
+      await request('/api/backup/settings', { method: 'PUT', body: { sources: editorSources } });
+      $('sources-modal').classList.add('hidden');
+      toast('Quellen gespeichert', 'success');
+      refresh();
+    } catch (err) {
+      errorEl.textContent = err.message;
+      errorEl.classList.remove('hidden');
+    }
+  }
+
+  // ------------------------------------------------------- Ordner-Browser
+
+  let browseCurrent = null;
+  let browseCallback = null;
+
+  async function loadBrowse(dir) {
+    const data = await request(`/api/backup/browse?path=${encodeURIComponent(dir)}`);
+    browseCurrent = data;
+    $('browse-path').textContent = data.path;
+    $('btn-browse-up').disabled = !data.parent && data.path === '/';
+    const list = $('browse-list');
+    list.innerHTML = '';
+    if (!data.dirs.length) {
+      list.innerHTML = '<p class="muted empty">Keine Unterordner</p>';
+      return;
+    }
+    for (const name of data.dirs) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'browse-item';
+      btn.textContent = `📁 ${name}`;
+      btn.addEventListener('click', () => {
+        loadBrowse(data.path === '/' ? `/${name}` : `${data.path}/${name}`).catch((err) => toast(err.message, 'error'));
+      });
+      list.appendChild(btn);
+    }
+  }
+
+  async function openBrowse(startPath, callback) {
+    browseCallback = callback;
+    $('browse-modal').classList.remove('hidden');
+    try {
+      await loadBrowse(startPath && startPath.startsWith('/') ? startPath : '/');
+    } catch {
+      loadBrowse('/').catch((err) => toast(err.message, 'error'));
+    }
+  }
+
+  function browseUp() {
+    if (browseCurrent && browseCurrent.parent) {
+      loadBrowse(browseCurrent.parent).catch((err) => toast(err.message, 'error'));
+    }
+  }
+
+  function browseSelect() {
+    $('browse-modal').classList.add('hidden');
+    if (browseCallback && browseCurrent) browseCallback(browseCurrent.path);
+    browseCallback = null;
   }
 
   function renderBackups() {
@@ -266,6 +393,19 @@
     $('btn-restore-confirm').addEventListener('click', confirmRestore);
     $('btn-upload').addEventListener('click', () => $('upload-file').click());
     $('upload-file').addEventListener('change', (e) => { upload(e.target.files[0]); e.target.value = ''; });
+
+    $('btn-sources-config').addEventListener('click', openSourcesConfig);
+    $('btn-sources-close').addEventListener('click', () => $('sources-modal').classList.add('hidden'));
+    $('btn-sources-defaults').addEventListener('click', loadSourceDefaults);
+    $('btn-sources-save').addEventListener('click', saveSources);
+    $('btn-source-add').addEventListener('click', () => {
+      editorSources.push({ name: '', path: '' });
+      renderSourceEditor();
+    });
+    $('btn-browse-close').addEventListener('click', () => $('browse-modal').classList.add('hidden'));
+    $('btn-browse-cancel').addEventListener('click', () => $('browse-modal').classList.add('hidden'));
+    $('btn-browse-up').addEventListener('click', browseUp);
+    $('btn-browse-select').addEventListener('click', browseSelect);
 
     if (await checkAuth()) showApp();
     else showLogin();

@@ -7,8 +7,10 @@ services:
     # build: .
     container_name: dms-backup-gui
     restart: unless-stopped
+    # Die GUI lauscht im Container auf Port 80. Erhält der Container eine eigene
+    # IP (z. B. Unraid-Bridge br0 / macvlan), ist kein Port-Mapping nötig.
     ports:
-      - "8080:8080"
+      - "8080:80"
     environment:
       # --- Sicherheit ---
       ADMIN_PASSWORD: "bitte-aendern"
@@ -30,13 +32,12 @@ services:
       BACKUP_CRON: "0 3 * * *"
       RETENTION: "14"
     volumes:
-      # Backup-Ziel
+      # Backup-Ziel (hier liegen auch die GUI-Einstellungen)
       - ./backups:/backups
-      # DMS-Daten (Pfade an das eigene DMS-Setup anpassen!)
-      - ./docker-data/dms/mail-data:/dms/mail-data
-      - ./docker-data/dms/mail-state:/dms/mail-state
-      - ./docker-data/dms/mail-logs:/dms/mail-logs
-      - ./docker-data/dms/config:/dms/config
+      # DMS-Daten einmal als Ganzes mounten – welche Unterordner gesichert
+      # werden, wird bequem im ⚙️-Konfigurationsdialog der GUI festgelegt.
+      # (Unraid: /mnt/user/appdata/dms o. ä.)
+      - ./docker-data/dms:/dms
       # Docker-Socket nur nötig, wenn der DMS-Container beim Restore
       # automatisch gestoppt/gestartet werden soll
       - /var/run/docker.sock:/var/run/docker.sock
