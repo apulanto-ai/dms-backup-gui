@@ -39,6 +39,7 @@
       sessionStorage.setItem('admin-token', result.token);
       $('admin-password').value = '';
       showApp();
+      if (window.AdminView) window.AdminView.authChanged();
     } catch (err) {
       errorEl.textContent = err.message;
       errorEl.classList.remove('hidden');
@@ -411,6 +412,11 @@
     else showLogin();
   }
 
+  async function authChanged() {
+    if (await checkAuth()) showApp();
+    else showLogin();
+  }
+
   document.addEventListener('DOMContentLoaded', init);
-  window.BackupView = { refresh };
+  window.BackupView = { refresh, authChanged, openBrowse };
 })();

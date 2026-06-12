@@ -245,6 +245,18 @@ textarea { resize: vertical; }
 .browse-item:hover { background: var(--surface-2); }
 .browse-list .empty { padding: 18px 0; margin: 0; }
 
+/* ------------------------------------------------------------- Verwaltung */
+.adm-hint { margin: -6px 0 16px; }
+.alias-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+.alias-item { display: flex; align-items: center; gap: 8px; padding: 7px 11px;
+  background: var(--surface-2); border-radius: var(--radius-sm); font-size: 13px; }
+.alias-item .alias-text { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.alias-form { display: flex; gap: 6px; align-items: center; }
+.alias-form input { flex: 1; min-width: 0; }
+.alias-arrow { color: var(--muted); flex-shrink: 0; }
+.path-row { display: flex; gap: 6px; align-items: center; }
+.path-row input { flex: 1; min-width: 0; }
+
 /* ---------------------------------------------------------------- Webmail */
 .mail-layout {
   display: grid; grid-template-columns: 230px 380px 1fr; gap: var(--gap);

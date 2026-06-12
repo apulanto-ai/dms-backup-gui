@@ -20,6 +20,7 @@
     </div>
     <nav class="app-tabs" role="tablist">
       <button class="app-tab active" data-view="backup" role="tab">🛡️ Backup</button>
+      <button class="app-tab" data-view="admin" role="tab">👥 Verwaltung</button>
       <button class="app-tab" data-view="webmail" role="tab">✉️ Webmail</button>
     </nav>
     <div class="topbar-actions">
@@ -100,6 +101,94 @@
               </label>
               <label>Aufbewahrung (Anzahl Backups, 0 = unbegrenzt)
                 <input type="number" id="schedule-retention" min="0" max="999" />
+              </label>
+              <button type="submit" class="btn primary full">Speichern</button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- ======================= VERWALTUNGS-ANSICHT ======================= -->
+  <main id="view-admin" class="view">
+
+    <section id="admin-login" class="login-card hidden">
+      <div class="card login-inner">
+        <h2>👥 Admin-Anmeldung</h2>
+        <p class="muted">Zugang zur Benutzerverwaltung</p>
+        <form id="admin-login-form">
+          <label>Admin-Passwort
+            <input type="password" id="admin-login-password" autocomplete="current-password" required />
+          </label>
+          <p class="error hidden" id="admin-login-error"></p>
+          <button type="submit" class="btn primary full">Anmelden</button>
+        </form>
+      </div>
+    </section>
+
+    <section id="admin-app" class="hidden">
+      <div class="grid stats-grid">
+        <div class="card stat-card">
+          <div class="stat-icon">👥</div>
+          <div><small>E-Mail-Konten</small><strong id="adm-stat-accounts">–</strong></div>
+        </div>
+        <div class="card stat-card">
+          <div class="stat-icon">🔁</div>
+          <div><small>Aliasse</small><strong id="adm-stat-aliases">–</strong></div>
+        </div>
+        <div class="card stat-card">
+          <div class="stat-icon">💾</div>
+          <div><small>Mail-Daten gesamt</small><strong id="adm-stat-size">–</strong></div>
+        </div>
+        <div class="card stat-card">
+          <div class="stat-icon">📂</div>
+          <div><small>DMS-Konfiguration</small><strong id="adm-stat-config">–</strong></div>
+        </div>
+      </div>
+
+      <p class="muted small adm-hint">💡 Änderungen werden vom DMS-Change-Detector automatisch übernommen – das kann einige Sekunden dauern.</p>
+
+      <div class="grid main-grid">
+        <div class="card">
+          <div class="card-head">
+            <h3>👥 E-Mail-Konten</h3>
+            <button class="btn primary" id="btn-account-add">➕ Neues Konto</button>
+          </div>
+          <div id="account-list" class="backup-list">
+            <p class="muted empty">Lade Konten …</p>
+          </div>
+        </div>
+
+        <div class="stack">
+          <div class="card">
+            <div class="card-head">
+              <h3>🔁 Aliasse</h3>
+            </div>
+            <div id="alias-list" class="alias-list"></div>
+            <form id="alias-form" class="alias-form">
+              <input type="email" id="alias-alias" placeholder="alias@domain.tld" required />
+              <span class="alias-arrow">→</span>
+              <input type="email" id="alias-target" placeholder="ziel@domain.tld" required />
+              <button type="submit" class="icon-btn" title="Alias anlegen">➕</button>
+            </form>
+          </div>
+
+          <div class="card">
+            <h3>📂 DMS-Pfade</h3>
+            <p class="muted small">Leer lassen = automatisch aus den Backup-Quellen ableiten.</p>
+            <form id="admin-paths-form" class="stack">
+              <label>Konfigurationsverzeichnis (postfix-accounts.cf)
+                <div class="path-row">
+                  <input type="text" id="admin-config-dir" placeholder="/dms/config" />
+                  <button type="button" class="icon-btn" id="btn-browse-config" title="Ordner auswählen">📁</button>
+                </div>
+              </label>
+              <label>Mail-Daten-Verzeichnis
+                <div class="path-row">
+                  <input type="text" id="admin-maildata-dir" placeholder="/dms/mail-data" />
+                  <button type="button" class="icon-btn" id="btn-browse-maildata" title="Ordner auswählen">📁</button>
+                </div>
               </label>
               <button type="submit" class="btn primary full">Speichern</button>
             </form>
@@ -232,6 +321,69 @@
     </div>
   </div>
 
+  <!-- ======================= KONTO-MODALS ======================= -->
+  <div class="modal-backdrop hidden" id="account-modal">
+    <div class="modal card">
+      <div class="card-head">
+        <h3 id="account-modal-title">➕ Neues E-Mail-Konto</h3>
+        <button class="icon-btn" id="btn-account-close">✕</button>
+      </div>
+      <form id="account-form" class="stack">
+        <label id="account-email-label">E-Mail-Adresse
+          <input type="email" id="account-email" placeholder="benutzer@domain.tld" autocomplete="off" />
+        </label>
+        <label>Passwort <small class="muted">(mind. 6 Zeichen)</small>
+          <div class="path-row">
+            <input type="text" id="account-password" autocomplete="new-password" required minlength="6" />
+            <button type="button" class="icon-btn" id="btn-account-genpw" title="Sicheres Passwort erzeugen">🎲</button>
+          </div>
+        </label>
+        <p class="error hidden" id="account-error"></p>
+        <div class="row gap end">
+          <button type="button" class="btn ghost" id="btn-account-cancel">Abbrechen</button>
+          <button type="submit" class="btn primary" id="btn-account-submit">💾 Speichern</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="modal-backdrop hidden" id="quota-modal">
+    <div class="modal card">
+      <div class="card-head">
+        <h3>📐 Quota für <span id="quota-email"></span></h3>
+        <button class="icon-btn" id="btn-quota-close">✕</button>
+      </div>
+      <form id="quota-form" class="stack">
+        <label>Speicherlimit <small class="muted">(z. B. 500M oder 2G – leer = unbegrenzt)</small>
+          <input type="text" id="quota-value" placeholder="unbegrenzt" pattern="\d+[BbKkMmGgTt]?" />
+        </label>
+        <p class="error hidden" id="quota-error"></p>
+        <div class="row gap end">
+          <button type="button" class="btn ghost" id="btn-quota-cancel">Abbrechen</button>
+          <button type="submit" class="btn primary">💾 Speichern</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="modal-backdrop hidden" id="account-delete-modal">
+    <div class="modal card">
+      <div class="card-head">
+        <h3>🗑️ Konto löschen</h3>
+        <button class="icon-btn" id="btn-accdel-close">✕</button>
+      </div>
+      <p>Konto <strong id="accdel-email"></strong> wird aus dem DMS entfernt.</p>
+      <label class="switch-row">
+        <span>Mail-Daten (Postfach) ebenfalls löschen <small class="muted">(unwiderruflich!)</small></span>
+        <input type="checkbox" id="accdel-maildir" class="switch" />
+      </label>
+      <div class="row gap end">
+        <button class="btn ghost" id="btn-accdel-cancel">Abbrechen</button>
+        <button class="btn danger" id="btn-accdel-confirm">🗑️ Löschen</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ======================= QUELLEN-KONFIGURATION ======================= -->
   <div class="modal-backdrop hidden" id="sources-modal">
     <div class="modal card">
@@ -315,6 +467,7 @@
   <script src="js/theme.js"></script>
   <script src="js/api.js"></script>
   <script src="js/backup.js"></script>
+  <script src="js/admin.js"></script>
   <script src="js/webmail.js"></script>
   <script src="js/main.js"></script>
 </body>

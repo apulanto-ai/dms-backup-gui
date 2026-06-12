@@ -89,4 +89,46 @@ async function resetSources() {
   await persist();
 }
 
-module.exports = { BACKUP_DIR, defaultSources, getSources, isCustom, validateSources, saveSources, resetSources };
+// ---------------------------------------------------------------------------
+// DMS-Pfade für die Benutzerverwaltung (Admin-Panel)
+// ---------------------------------------------------------------------------
+
+// Reihenfolge: GUI-Einstellung > ENV > gleichnamige Backup-Quelle > Standard
+function getAdminPaths() {
+  const settings = readSettings();
+  const bySource = (name, fallback) => {
+    const src = getSources().find((s) => s.name === name);
+    return src ? src.path : fallback;
+  };
+  return {
+    configDir: settings.configDir || process.env.DMS_CONFIG_DIR || bySource('config', '/dms/config'),
+    mailDataDir: settings.mailDataDir || process.env.DMS_MAIL_DIR || bySource('mail-data', '/dms/mail-data')
+  };
+}
+
+function validateAdminPath(dir) {
+  if (dir === '') return null; // leer = zurück auf Automatik
+  if (typeof dir !== 'string' || !dir.startsWith('/') || dir === '/') {
+    return `Ungültiger Pfad "${dir}" – absoluter Pfad unterhalb von / erforderlich`;
+  }
+  if (/[|\\\n\r]/.test(dir)) return `Ungültiger Pfad "${dir}" – |, \\ und Zeilenumbrüche sind nicht erlaubt`;
+  return null;
+}
+
+async function saveAdminPaths({ configDir, mailDataDir }) {
+  cache = { ...readSettings() };
+  for (const [key, value] of [['configDir', configDir], ['mailDataDir', mailDataDir]]) {
+    if (value === undefined) continue;
+    const normalized = String(value).trim();
+    if (normalized === '') delete cache[key];
+    else cache[key] = path.posix.normalize(normalized).replace(/\/+$/, '');
+  }
+  await persist();
+  return getAdminPaths();
+}
+
+module.exports = {
+  BACKUP_DIR,
+  defaultSources, getSources, isCustom, validateSources, saveSources, resetSources,
+  getAdminPaths, validateAdminPath, saveAdminPaths
+};

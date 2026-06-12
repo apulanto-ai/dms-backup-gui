@@ -5,6 +5,7 @@ const path = require('path');
 
 const { router: authRouter, requireAdmin } = require('./auth');
 const backup = require('./backup');
+const admin = require('./admin');
 const mail = require('./mail');
 const docker = require('./docker');
 
@@ -16,6 +17,7 @@ app.use(express.static(path.join(__dirname, '..', 'public')));
 
 app.use('/api/auth', authRouter);
 app.use('/api/backup', requireAdmin, backup.router);
+app.use('/api/admin', requireAdmin, admin.router);
 app.use('/api/mail', mail.router);
 
 app.get('/api/health', (req, res) => {

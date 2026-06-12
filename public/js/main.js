@@ -11,6 +11,7 @@
         document.querySelectorAll('.view').forEach((v) => v.classList.remove('active'));
         document.getElementById(`view-${tab.dataset.view}`).classList.add('active');
         localStorage.setItem('dms-panel-view', tab.dataset.view);
+        if (tab.dataset.view === 'admin' && window.AdminView) window.AdminView.authChanged();
       });
     });
 
